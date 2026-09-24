@@ -1,0 +1,6 @@
+# Local development only. Not used by Coolify/production deploys, which run
+# docker-compose.yml alone and never publish the db port to the host.
+services:
+  db:
+    ports:
+      - "127.0.0.1:5433:5432"

@@ -5,6 +5,8 @@ from fastapi.testclient import TestClient
 
 import app.main as main_module
 
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"fake-jpeg-payload"
+
 
 @pytest.fixture
 def client(monkeypatch):
@@ -12,7 +14,7 @@ def client(monkeypatch):
         return object()
 
     monkeypatch.setattr(main_module, "create_pool", fake_create_pool)
-    monkeypatch.setattr(main_module, "Groq", lambda **kwargs: object())
+    monkeypatch.setattr(main_module, "AsyncGroq", lambda **kwargs: object())
 
     async def default_check_and_increment(pool, device_id, cap, today):
         return True
@@ -24,7 +26,10 @@ def client(monkeypatch):
 
 
 def test_text_question_returns_answer(client, monkeypatch):
-    monkeypatch.setattr(main_module, "ask_text", lambda groq_client, content: "B. Queue")
+    async def fake_ask_text(groq_client, content):
+        return "B. Queue"
+
+    monkeypatch.setattr(main_module, "ask_text", fake_ask_text)
 
     response = client.post(
         "/ask",
@@ -69,6 +74,69 @@ def test_image_wrong_content_type_returns_400(client):
     assert response.status_code == 400
 
 
+def test_image_spoofed_content_type_returns_400(client):
+    """A client that lies and labels non-image bytes as image/jpeg must not fool us."""
+    response = client.post(
+        "/ask",
+        data={"type": "image"},
+        files={"image": ("q.jpg", io.BytesIO(b"#!/bin/sh not an image"), "image/jpeg")},
+        headers={"X-Device-Id": "device-1"},
+    )
+    assert response.status_code == 400
+
+
+def test_image_mislabeled_but_real_jpeg_is_accepted(client, monkeypatch):
+    """React Native/Expo often sends image/jpg; real JPEG bytes must not be rejected for it."""
+
+    async def fake_ask_image(groq_client, image_bytes, mime_type):
+        assert mime_type == "image/jpeg"
+        return "B. Paris"
+
+    monkeypatch.setattr(main_module, "ask_image", fake_ask_image)
+
+    response = client.post(
+        "/ask",
+        data={"type": "image"},
+        files={"image": ("q.jpg", io.BytesIO(JPEG_BYTES), "image/jpg")},
+        headers={"X-Device-Id": "device-1"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"answer": "B. Paris"}
+
+
+def test_image_question_returns_answer(client, monkeypatch):
+    async def fake_ask_image(groq_client, image_bytes, mime_type):
+        return "B. Queue"
+
+    monkeypatch.setattr(main_module, "ask_image", fake_ask_image)
+
+    response = client.post(
+        "/ask",
+        data={"type": "image"},
+        files={"image": ("q.jpg", io.BytesIO(JPEG_BYTES), "image/jpeg")},
+        headers={"X-Device-Id": "device-1"},
+    )
+    assert response.status_code == 200
+    assert response.json() == {"answer": "B. Queue"}
+
+
+def test_image_groq_failure_returns_502(client, monkeypatch):
+    from app.groq_client import GroqAnswerError
+
+    async def failing_ask_image(groq_client, image_bytes, mime_type):
+        raise GroqAnswerError("boom")
+
+    monkeypatch.setattr(main_module, "ask_image", failing_ask_image)
+
+    response = client.post(
+        "/ask",
+        data={"type": "image"},
+        files={"image": ("q.jpg", io.BytesIO(JPEG_BYTES), "image/jpeg")},
+        headers={"X-Device-Id": "device-1"},
+    )
+    assert response.status_code == 502
+
+
 def test_image_too_large_returns_413(client, monkeypatch):
     monkeypatch.setattr(main_module, "MAX_IMAGE_BYTES", 10)
     response = client.post(
@@ -78,6 +146,28 @@ def test_image_too_large_returns_413(client, monkeypatch):
         headers={"X-Device-Id": "device-1"},
     )
     assert response.status_code == 413
+
+
+def test_image_too_large_does_not_consume_rate_limit(client, monkeypatch):
+    monkeypatch.setattr(main_module, "MAX_IMAGE_BYTES", 10)
+
+    calls = []
+
+    async def tracking_check_and_increment(pool, device_id, cap, today):
+        calls.append(device_id)
+        return True
+
+    monkeypatch.setattr(main_module, "check_and_increment", tracking_check_and_increment)
+
+    response = client.post(
+        "/ask",
+        data={"type": "image"},
+        files={"image": ("q.jpg", io.BytesIO(b"x" * 100), "image/jpeg")},
+        headers={"X-Device-Id": "device-1"},
+    )
+
+    assert response.status_code == 413
+    assert calls == []
 
 
 def test_missing_device_id_header_returns_400(client):
@@ -102,7 +192,7 @@ def test_rate_limit_exceeded_returns_429(client, monkeypatch):
 def test_groq_failure_returns_502(client, monkeypatch):
     from app.groq_client import GroqAnswerError
 
-    def failing_ask_text(groq_client, content):
+    async def failing_ask_text(groq_client, content):
         raise GroqAnswerError("boom")
 
     monkeypatch.setattr(main_module, "ask_text", failing_ask_text)

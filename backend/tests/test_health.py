@@ -8,7 +8,7 @@ def test_health_returns_ok(monkeypatch):
         return object()
 
     monkeypatch.setattr(main_module, "create_pool", fake_create_pool)
-    monkeypatch.setattr(main_module, "Groq", lambda **kwargs: object())
+    monkeypatch.setattr(main_module, "AsyncGroq", lambda **kwargs: object())
 
     with TestClient(main_module.app) as client:
         response = client.get("/health")
