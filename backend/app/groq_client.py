@@ -7,8 +7,8 @@ SYSTEM_PROMPT = (
     "conclusions, or unnecessary details."
 )
 
-TEXT_MODEL = "llama-3.1-8b-instant"
-VISION_MODEL = "meta-llama/llama-4-scout-17b-16e-instruct"
+TEXT_MODEL = "openai/gpt-oss-20b"
+VISION_MODEL = "qwen/qwen3.8-27b"
 
 
 class GroqAnswerError(Exception):
