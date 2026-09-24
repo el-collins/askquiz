@@ -1,6 +1,12 @@
 # Local development only. Not used by Coolify/production deploys, which run
-# docker-compose.yml alone and never publish the db port to the host.
+# docker-compose.yml alone and never publish api/db ports to the host —
+# Coolify's proxy reaches api over its internal Docker network, and the
+# host port Coolify assigns for api varies per-server/deployment, so
+# publishing a fixed one (e.g. 8000) risks colliding with another app.
 services:
+  api:
+    ports:
+      - "127.0.0.1:8000:8000"
   db:
     ports:
       - "127.0.0.1:5433:5432"
