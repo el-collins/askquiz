@@ -2,6 +2,7 @@ from datetime import date
 from typing import Literal, Optional
 
 from fastapi import FastAPI, Form, File, UploadFile, Header, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -40,7 +41,7 @@ def _sniff_image_type(data: bytes) -> Optional[str]:
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
-    return JSONResponse(status_code=400, content={"detail": exc.errors()})
+    return JSONResponse(status_code=400, content={"detail": jsonable_encoder(exc.errors())})
 
 
 @app.on_event("startup")

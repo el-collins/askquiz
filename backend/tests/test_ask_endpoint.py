@@ -203,3 +203,17 @@ def test_groq_failure_returns_502(client, monkeypatch):
         headers={"X-Device-Id": "device-1"},
     )
     assert response.status_code == 502
+
+
+def test_image_field_sent_as_plain_string_returns_400_not_500(client):
+    """Reproduces a real production crash: a non-file "image" form field
+    trips Pydantic's UploadFile validation, and its ctx.error carries a raw
+    ValueError, which the old handler tried to json.dumps directly and
+    crashed with a 500 instead of returning the intended 400."""
+    response = client.post(
+        "/ask",
+        data={"type": "image", "image": "not-a-file"},
+        headers={"X-Device-Id": "device-1"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"]
