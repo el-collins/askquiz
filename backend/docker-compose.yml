@@ -2,9 +2,8 @@ services:
   api:
     build: .
     ports:
-      - "${PORT:-8000}:8000"
+      - "8000:8000"
     environment:
-      PORT: ${PORT:-8000}
       DATABASE_URL: postgresql://askquiz:${POSTGRES_PASSWORD}@db:5432/askquiz
       GROQ_API_KEY: ${GROQ_API_KEY}
       DAILY_REQUEST_CAP: ${DAILY_REQUEST_CAP:-50}
