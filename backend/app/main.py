@@ -3,6 +3,7 @@ from typing import Literal, Optional
 
 from fastapi import FastAPI, Form, File, UploadFile, Header, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from groq import AsyncGroq
 
@@ -12,6 +13,13 @@ from app.groq_client import ask_text, ask_image, GroqAnswerError
 
 settings = load_settings()
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 MAX_IMAGE_BYTES = 3_000_000  # keeps base64-encoded payload under Groq's 4MB limit
 
