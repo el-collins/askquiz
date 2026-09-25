@@ -21,6 +21,12 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "extra": {
+      "eas": {
+        "projectId": "4f3c1d51-87c0-4383-ae71-7e8bebc2e80a"
+      }
+    },
+    "owner": "elcollins"
   }
 }

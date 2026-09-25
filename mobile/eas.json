@@ -1,0 +1,17 @@
+{
+  "cli": {
+    "version": ">= 13.0.0",
+    "appVersionSource": "remote"
+  },
+  "build": {
+    "preview": {
+      "distribution": "internal",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_BASE_URL": "http://ts5yoc6tvblm8glr85j4qtk5.85.239.241.235.sslip.io"
+      }
+    }
+  }
+}
